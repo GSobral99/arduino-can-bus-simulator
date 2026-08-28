@@ -104,6 +104,13 @@ This is Stage 1 of a larger project:
 - [ ] Stage 5: OBD-II integration with a real vehicle~
 - [ ] Stage 6: Automatic Bus-Off recovery in receiver firmware (software watchdog)
 
+
+## Project History
+
+- [Stage 1 (v1.0)](https://github.com/TEU-USERNAME/can-bus-arduino-simulator/releases/tag/v1.0-stage1) - initial minimal two-node network, arbitration and fault-tolerance testing
+- [Stage 1 (v1.1)](https://github.com/TEU-USERNAME/can-bus-arduino-simulator/releases/tag/v1.1-stage1)
+
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
