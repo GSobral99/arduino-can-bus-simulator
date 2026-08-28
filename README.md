@@ -73,7 +73,7 @@ With both termination resistors in place, the transmitter sends a temperature fr
 Note: frames are occasionally decoded slightly out of the transmitter's send order (e.g. RPM appearing to "arrive" close to Temp rather than strictly after it) - this is expected, since `0x050` has bus priority over `0x100` and can win arbitration even when generated after in the same loop iteration.
 
 
-![Physical build - Stage 1](screenshots/physical_build_stage1.jpg)
+![Physical build - Stage 1](screenshots/stage1_build_photo.jpg)
 
 ### Test 2 - Arbitration under load
 
@@ -112,7 +112,7 @@ This is Stage 1 of a larger project:
 
 - [Stage 1 (v1.0)](https://github.com/TEU-USERNAME/can-bus-arduino-simulator/releases/tag/v1.0-stage1) - initial minimal two-node network, arbitration and fault-tolerance testing
 - [Stage 1 (v1.1)](https://github.com/TEU-USERNAME/can-bus-arduino-simulator/releases/tag/v1.1-stage1)
-- [Stage 1 (v1.3)](https://github.com/TEU-USERNAME/can-bus-arduino-simulator/releases/tag/v1.3-stage1) - added physical build photo
+- [Stage 1 (v1.2)](https://github.com/TEU-USERNAME/can-bus-arduino-simulator/releases/tag/v1.2-stage1) - added physical build photo
 
 
 ## License
