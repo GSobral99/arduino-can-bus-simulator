@@ -110,9 +110,9 @@ This is Stage 1 of a larger project:
 
 ## Project History
 
-- [Stage 1 (v1.0)](https://github.com/TEU-USERNAME/can-bus-arduino-simulator/releases/tag/v1.0-stage1) - initial minimal two-node network, arbitration and fault-tolerance testing
-- [Stage 1 (v1.1)](https://github.com/TEU-USERNAME/can-bus-arduino-simulator/releases/tag/v1.1-stage1)
-- [Stage 1 (v1.2)](https://github.com/TEU-USERNAME/can-bus-arduino-simulator/releases/tag/v1.2-stage1) - added physical build photo
+- [Stage 1 (v1.0)](https://github.com/GSobral99/can-bus-arduino-simulator/releases/tag/v1.0-stage1) - initial minimal two-node network, arbitration and fault-tolerance testing
+- [Stage 1 (v1.1)](https://github.com/GSobral99/can-bus-arduino-simulator/releases/tag/v1.1-stage1)
+- [Stage 1 (v1.2)](https://github.com/GSobral99/can-bus-arduino-simulator/releases/tag/v1.2-stage1) - added physical build photo
 
 
 ## License
