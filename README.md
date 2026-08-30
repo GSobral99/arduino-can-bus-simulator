@@ -1,6 +1,7 @@
 # CAN Bus Network Simulator with Arduino
 
 ![Wiring Diagram](schematics/wiring_diagram.png)
+*Wiring diagram created with [Cirkit Designer](https://www.cirkitdesigner.com/)*
 
 This project is a physical simulation of a **CAN (Controller Area Network) bus**, the industry-standard protocol used in the automotive sector for communication between Electronic Control Units.
 
@@ -13,6 +14,9 @@ The system simulates concurrent data transmission - engine RPM and engine temper
 * 2x MCP2515 CAN controller modules (with TJA1050 transceiver)
 * Jumper wires (male-to-female and male-to-male)
 * 120Ω termination resistors (enabled via the J1 jumpers on each module)
+* 1x Potentiometer (Stage 2 - simulates RPM input)
+* 1x LDR + ~10kΩ resistor for a voltage divider (Stage 2 - simulates temperature input)
+* 1x Push button (Stage 2 - simulates a brake/emergency alert)
 
 ## Wiring
 
@@ -33,6 +37,15 @@ Both Arduinos connect to their respective MCP2515 module over SPI:
 * `CANL` connected to `CANL`
 * Grounds of both Arduinos tied together for a common reference
 * **Important:** the **J1** jumper needs to be placed on both modules to enable the 120Ω termination resistor at each end of the bus.
+
+**Sensors (Stage 2, all on the transmitter/Uno side):**
+
+| Component | Pin | Notes |
+|---|---|---|
+| Potentiometer wiper | A0 | Outer legs to 5V and GND |
+| LDR | A1 | Voltage divider with a ~10kΩ resistor to GND |
+
+| Push button | D3 | Other leg to GND; uses `INPUT_PULLUP`, no external resistor needed |
 
 ## Concepts Demonstrated
 
@@ -58,6 +71,9 @@ To test the resilience of the hardware architecture, the 120Ω termination resis
 
 ## Results & Testing
 
+
+## Stage 1 - Simulated Values
+
 ### Test 1 - Normal operation
 
 With both termination resistors in place, the transmitter sends a temperature frame (`0x050`) and an RPM frame (`0x100`) every 500ms, and the receiver decodes both correctly. The value sent by the transmitter matches exactly what the receiver decodes - confirmed below with the highlighted line showing `Temp: 108 C` and `RPM: 4200/4400` on both sides at the same timestamp:
@@ -72,6 +88,7 @@ With both termination resistors in place, the transmitter sends a temperature fr
 
 Note: frames are occasionally decoded slightly out of the transmitter's send order (e.g. RPM appearing to "arrive" close to Temp rather than strictly after it) - this is expected, since `0x050` has bus priority over `0x100` and can win arbitration even when generated after in the same loop iteration.
 
+### Physical Build
 
 ![Physical build - Stage 1](screenshots/stage1_build_photo.jpg)
 
@@ -96,24 +113,60 @@ Note: frames are occasionally decoded slightly out of the transmitter's send ord
 
 **Takeaway:** this matches real-world CAN behavior. Once a node's internal error counters cross the *Bus-Off* threshold (ISO 11898), the controller stops participating in the bus as a protection mechanism, and restoring the physical fault alone is not enough - the controller itself needs to be reinitialized. A production ECU would normally implement this recovery automatically in firmware (e.g. by periodically calling `CAN.begin()` again after detecting no valid traffic for too long). An automatic-recovery version of the receiver firmware was prototyped during this project and is a natural next step - see Roadmap below.
 
+## Stage 2 - Real Sensor Input
+
+![Wiring Diagram - Stage 2](schematics/wiring_diagram_stage2.png)
+*Wiring diagram created with [Cirkit Designer](https://www.cirkitdesigner.com/)*
+
+Stage 2 replaces the simulated values with three real sensors on the transmitter, and adds an event-driven, highest-priority alert signal alongside the two periodic ones:
+
+* `ID 0x010` (highest priority, event-driven): brake/emergency alert, from a push button
+* `ID 0x050` (medium priority, periodic): engine temperature, from an LDR
+* `ID 0x100` (lowest priority, periodic): engine RPM, from a potentiometer
+
+### Test 1 - Potentiometer → RPM
+
+Rotating the potentiometer changes the decoded RPM value on the receiver in real time, matching the value sent by the transmitter.
+
+![Potentiometer controlling RPM](screenshots/stage2_test1_potentiometer_rpm.gif)
+
+### Test 2 - LDR → Temperature
+
+Covering and uncovering the LDR produces a smooth, real-time change in the decoded temperature value - shown below rising from 99°C to 108°C as more light reaches the sensor.
+
+![LDR controlling temperature](screenshots/stage2_test2_ldr_temperature.gif)
+
+### Test 3 - Button → Brake alert (event-driven, highest priority)
+
+Pressing the button immediately produces `BRAKE ALERT [0x010]` frames, interleaved with the ongoing periodic RPM/Temp traffic rather than replacing it - confirming the alert is sent as an independent, additional signal on the bus.
+
+![Brake alert interleaved with periodic traffic](screenshots/stage2_test3_brake_alert.png)
+
+### Test 4 - Arbitration with three priority levels
+
+With RPM and Temp frames already flowing, pressing the button shows the brake alert (`0x010`) being processed alongside the other two IDs without any noticeable delay, confirming three-level priority arbitration works as expected under real sensor-driven traffic (not just simulated values as in Stage 1's).
+
+![Arbitration with three concurrent IDs](screenshots/stage2_test4_arbitration_3_ids.png)
+
+### Physical Build - Stage 2
+
+![Physical build - Stage 2 with potentiometer, LDR, and button](screenshots/physical_build_stage2.jpg)
+
 ## Roadmap
 
-This is Stage 1 of a larger project:
-
 - [x] Stage 1: Minimal two-node CAN network
-- [ ] Stage 2: Sensor simulation (potentiometer, encoder, etc.)
+- [x] Stage 2: Sensor simulation (potentiometer, LDR, button)
 - [ ] Stage 3: Data logging to SD card
 - [ ] Stage 4: Real-time telemetry dashboard
-- [ ] Stage 5: OBD-II integration with a real vehicle~
+- [ ] Stage 5: OBD-II integration with a real vehicle
 - [ ] Stage 6: Automatic Bus-Off recovery in receiver firmware (software watchdog)
-
 
 ## Project History
 
 - [Stage 1 (v1.0)](https://github.com/GSobral99/can-bus-arduino-simulator/releases/tag/v1.0-stage1) - initial minimal two-node network, arbitration and fault-tolerance testing
 - [Stage 1 (v1.1)](https://github.com/GSobral99/can-bus-arduino-simulator/releases/tag/v1.1-stage1)
 - [Stage 1 (v1.2)](https://github.com/GSobral99/can-bus-arduino-simulator/releases/tag/v1.2-stage1) - added physical build photo
-
+- [Stage 2 (v2.0)](https://github.com/GSobral99/can-bus-arduino-simulator/releases/tag/v2.0-stage2) - real sensor input (potentiometer, LDR, button) with a third, event-driven CAN ID
 
 ## License
 

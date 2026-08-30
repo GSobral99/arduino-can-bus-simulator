@@ -1,14 +1,20 @@
 /*
- * CAN Bus Simulator - Transmitter Node (Arduino Uno)
+ * CAN Bus Simulator - Transmitter Node (Arduino Uno) - Stage 2
  * ----------------------------------------------------
- * Sends two simulated ECU signals onto the CAN bus:
- *   - Engine temperature (ID 0x050, high priority)
- *   - Engine RPM         (ID 0x100, low priority)
+ * Reads three real sensors and sends them onto the CAN bus as three
+ * separate ECU-style signals:
  *
- * Because 0x050 is numerically lower than 0x100, it wins bus
- * arbitration whenever both frames are ready to send at the same
- * time - this mirrors how a real vehicle prioritizes safety-critical
- * signals (e.g. temperature/braking) over less urgent ones (e.g. RPM).
+ *   ID 0x010 - Brake/emergency alert (HIGHEST priority, event-driven)
+ *              Source: push button. Only sent while the button is held.
+ *
+ *   ID 0x050 - Engine temperature (medium priority, periodic)
+ *              Source: LDR (light sensor) via a voltage divider.
+ *
+ *   ID 0x100 - Engine RPM (LOWEST priority, periodic)
+ *              Source: potentiometer.
+ *
+ * Because 0x010 < 0x050 < 0x100 numerically, the brake alert always
+ * wins bus arbitration over the periodic sensor readings.
  *
  * Hardware: Arduino Uno + MCP2515 CAN controller (SPI), 500 kbps bus.
  */
@@ -16,56 +22,71 @@
 #include <SPI.h>
 #include <mcp_can.h>
 
-// Chip Select pin used to talk to the MCP2515 over SPI
+// --- CAN controller ---
 const int SPI_CS_PIN = 10;
 MCP_CAN CAN(SPI_CS_PIN);
 
-// Simulated sensor values, updated every loop iteration
-unsigned long rpm = 800;      // engine RPM, ranges roughly 800-6000
-byte temperature = 85;        // engine temperature in Celsius, ranges 85-110
+// Sensor pins
+const int POT_PIN = A0;     // potentiometer wiper -> simulates RPM
+const int LDR_PIN = A1;     // LDR voltage divider  -> simulates temperature
+const int BUTTON_PIN = 3;   // push button          -> simulates brake alert
+
+// Output ranges
+const unsigned int RPM_MIN = 800;
+const unsigned int RPM_MAX = 6000;
+const byte TEMP_MIN = 85;
+const byte TEMP_MAX = 110;
+
+// How often periodic sensor frames (temperature, RPM) are sent
+const unsigned long SENSOR_SEND_INTERVAL_MS = 200;
+unsigned long lastSensorSendAt = 0;
 
 void setup() {
   Serial.begin(115200);
 
-  // Initialize the MCP2515:
-  //  - MCP_ANY: accept any operating mode during init
-  //  - CAN_500KBPS: bus speed, must match the receiver node
-  //  - MCP_8MHZ: crystal frequency on the module (some use 16MHz)
+  pinMode(BUTTON_PIN, INPUT_PULLUP); // no external resistor needed
+
   while (CAN_OK != CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ)) {
     Serial.println("CAN init failed, retrying...");
     delay(500);
   }
-
-  // Switch from configuration mode to normal operation
   CAN.setMode(MCP_NORMAL);
-  Serial.println("CAN Transmitter (Multi-ID) started");
+  Serial.println("CAN Transmitter (Stage 2 - real sensors) started");
 }
 
 void loop() {
-  // Update simulated sensor readings
-  rpm += 200;
-  if (rpm > 6000) rpm = 800;   // wrap back to idle RPM
+  // Event-driven frame: brake alert
+  bool brakePressed = (digitalRead(BUTTON_PIN) == LOW);
 
-  temperature++;
-  if (temperature > 110) temperature = 85;  // wrap back to a normal operating temperature
+  if (brakePressed) {
+    byte alertData[1] = { 0x01 };
+    CAN.sendMsgBuf(0x010, 0, 1, alertData);
+    Serial.println("Sent -> BRAKE ALERT [0x010]");
+    delay(100); // avoid flooding the bus while held
+  }
 
-  // Frame 1: RPM (ID 0x100, low priority)
-  // RPM needs 2 bytes, so split it into high byte and low byte
-  byte dataRpm[2] = {
-    (byte)((rpm >> 8) & 0xFF),  // high byte
-    (byte)(rpm & 0xFF)          // low byte
-  };
-  CAN.sendMsgBuf(0x100, 0, 2, dataRpm);
+  //Periodic frames: temperature and RPM
+  if (millis() - lastSensorSendAt >= SENSOR_SEND_INTERVAL_MS) {
+    lastSensorSendAt = millis();
 
-  // Frame 2: Temperature (ID 0x050, high priority)
-  // Temperature fits in a single byte (0-110 range used here)
-  byte dataTemp[1] = { temperature };
-  CAN.sendMsgBuf(0x050, 0, 1, dataTemp);
+    int potRaw = analogRead(POT_PIN);
+    unsigned int rpm = map(potRaw, 0, 1023, RPM_MIN, RPM_MAX);
 
-  Serial.print("Sent -> Temp: ");
-  Serial.print(temperature);
-  Serial.print(" C | RPM: ");
-  Serial.println(rpm);
+    int ldrRaw = analogRead(LDR_PIN);
+    byte temperature = map(ldrRaw, 0, 1023, TEMP_MIN, TEMP_MAX);
 
-  delay(500); // delay so that the Serial Monitor output is readable
+    byte dataRpm[2] = {
+      (byte)((rpm >> 8) & 0xFF),
+      (byte)(rpm & 0xFF)
+    };
+    CAN.sendMsgBuf(0x100, 0, 2, dataRpm);
+
+    byte dataTemp[1] = { temperature };
+    CAN.sendMsgBuf(0x050, 0, 1, dataTemp);
+
+    Serial.print("Sent -> Temp: ");
+    Serial.print(temperature);
+    Serial.print(" C | RPM: ");
+    Serial.println(rpm);
+  }
 }
