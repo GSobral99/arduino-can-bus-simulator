@@ -156,9 +156,9 @@ With RPM and Temp frames already flowing, pressing the button shows the brake al
 
 - [x] Stage 1: Minimal two-node CAN network
 - [x] Stage 2: Sensor simulation (potentiometer, LDR, button)
-- [ ] Stage 3: Data logging to SD card
-- [ ] Stage 4: Real-time telemetry dashboard
-- [ ] Stage 5: OBD-II integration with a real vehicle
+- [ ] Stage 3: Physical actuator — stepper motor gauge driven by CAN RPM
+- [ ] Stage 4: Real-time telemetry dashboard (Python/web)
+- [ ] Stage 5: Hardware-level ID filtering on the MCP2515 (masks/filters)
 - [ ] Stage 6: Automatic Bus-Off recovery in receiver firmware (software watchdog)
 
 ## Project History
